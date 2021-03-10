@@ -1,4 +1,4 @@
-package structs
+package main
 
 import (
 	"errors"
@@ -27,11 +27,6 @@ type Data struct {
 	Avg    float64 `json:"avg"`
 	Jitter float64 `json:"jitter"`
 	Loss   float64 `json:"loss"`
-}
-
-type Request interface {
-	Send(con *websocket.Conn, mutex *sync.Mutex) error
-	CheckConnection(conn *websocket.Conn) error
 }
 
 func (request TraceRequest) Send(con *websocket.Conn, mutex *sync.Mutex) error {

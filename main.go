@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/gorilla/websocket"
-	"github.com/lenistwo/structs"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
 	"io/ioutil"
@@ -39,7 +38,7 @@ const (
 
 var (
 	wg          sync.WaitGroup
-	config      structs.Config
+	config      Config
 	ipAddresses []string
 	con         *websocket.Conn
 	mu          sync.Mutex
@@ -167,7 +166,7 @@ func executeTraceCommand(ip string) {
 		return
 	}
 
-	request := structs.TraceRequest{
+	request := TraceRequest{
 		CommandType: TracerouteCommand,
 		Source:      config.Hostname,
 		Target:      ip,
@@ -190,11 +189,11 @@ func executePingCommand(ip string) {
 	logrus.Info(string(output))
 	logrus.Info("=================================== Ping ====================================")
 
-	request := structs.PingRequest{
+	request := PingRequest{
 		CommandType: PingCommand,
 		Source:      config.Hostname,
 		Target:      ip,
-		Data:        structs.Data{},
+		Data:        Data{},
 	}
 
 	totalHops := 0

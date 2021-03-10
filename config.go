@@ -1,4 +1,4 @@
-package structs
+package main
 
 type Config struct {
 	Hostname   string `json:"hostname"`
