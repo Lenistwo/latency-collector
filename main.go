@@ -40,8 +40,8 @@ var (
 	wg          sync.WaitGroup
 	config      Config
 	ipAddresses []string
-	con         *websocket.Conn
-	mu          sync.Mutex
+	connection  *websocket.Conn
+	mutex       sync.Mutex
 )
 
 func init() {
@@ -112,7 +112,7 @@ func establishWebsocketConnection() {
 	if err != nil {
 		logrus.Info("Failed Connecting To WebSocket")
 	}
-	con = dial
+	connection = dial
 }
 
 func creatCron() {
@@ -146,9 +146,9 @@ func trace() {
 
 func checkError(err error) {
 	if err != nil {
-		logrus.Info("=================================== Error ====================================")
-		logrus.Info(err)
-		logrus.Info("=================================== Error ====================================")
+		logrus.Error("=================================== Error ====================================")
+		logrus.Error(err)
+		logrus.Error("=================================== Error ====================================")
 		panic(err)
 	}
 }
@@ -175,7 +175,7 @@ func executeTraceCommand(ip string) {
 	logrus.Info("Created Trace Struct ")
 	logrus.Info(request)
 
-	err = request.Send(con, &mu)
+	err = request.Send(connection, &mutex)
 
 	if err != nil {
 		logrus.Warn("Sending Data Failed ", err)
@@ -197,19 +197,19 @@ func executePingCommand(ip string) {
 	}
 
 	totalHops := 0
-	jitterCounter := 0
 	lostCount := 0
+	jitterCounter := 1
 	var pings []float64
 	var jiters []float64
 	var lastPing float64
 
-	split := strings.Split(string(output), NewLine)
+	outputLines := strings.Split(string(output), NewLine)
 
 	logrus.Info("=================================== Ping Split ====================================")
-	logrus.Info(split)
+	logrus.Info(outputLines)
 	logrus.Info("=================================== Ping Split ====================================")
 
-	for _, line := range split {
+	for _, line := range outputLines {
 		if strings.HasPrefix(line, PingLinePrefix) {
 			continue
 		}
@@ -220,7 +220,7 @@ func executePingCommand(ip string) {
 
 		totalHops += 1
 
-		time, parseError := getTime(line)
+		time, parseError := getRequestDuration(line)
 
 		if lastPing == 0 {
 			lastPing = time
@@ -233,10 +233,9 @@ func executePingCommand(ip string) {
 
 		pings = append(pings, time)
 
-		if jitterCounter == 1 {
+		if jitterCounter%2 == 0 {
 			jiters = append(jiters, math.Abs(lastPing-time))
 			lastPing = time
-			jitterCounter = 0
 		}
 
 		jitterCounter += 1
@@ -264,7 +263,7 @@ func executePingCommand(ip string) {
 	logrus.Info("Created Ping Struct")
 	logrus.Info(request)
 
-	err := request.Send(con, &mu)
+	err := request.Send(connection, &mutex)
 
 	if err != nil {
 		logrus.Warn("Sending Data Failed", err)
@@ -292,21 +291,21 @@ func avg(values []float64) float64 {
 
 func calculateLoss(lostCount float64, totalLength float64) float64 {
 	result := lostCount / totalLength
-	logrus.Info("Lose Count ", result)
+	logrus.Info("Loss Count ", result)
 	if math.IsNaN(result) {
 		return 0
 	}
 	return result
 }
 
-func getTime(str string) (float64, error) {
+func getRequestDuration(str string) (float64, error) {
 	if len(str) < MinLengthOfSuccessFullRequest {
 		logrus.Warn("Request Timed Out")
 		return 0, errors.New("request timed out")
 	}
 
 	timeSubstring := str[strings.LastIndex(str, IndexOfTime):]
-	replace := regexp.MustCompile(ReplaceAllExpectNumbers).ReplaceAllString(timeSubstring, EmptyLine)
-	time, err := strconv.ParseFloat(replace, 1024)
-	return time, err
+	requestDuration := regexp.MustCompile(ReplaceAllExpectNumbers).ReplaceAllString(timeSubstring, EmptyLine)
+	duration, err := strconv.ParseFloat(requestDuration, 1024)
+	return duration, err
 }
